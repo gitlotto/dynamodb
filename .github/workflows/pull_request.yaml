@@ -1,0 +1,68 @@
+name: Pull Request
+
+on:
+  pull_request:
+    branches: [trunk]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+      
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GITLOTTO_PRIVATE_WORLD }}
+      
+      - name: Setup git
+        run: |
+          git config --global url."git@github.com:gitlotto".insteadOf "https://github.com/gitlotto"
+      
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21.0'
+
+      - name: Install dependencies
+        run: |
+          go env -w GOPRIVATE=github.com/gitlotto
+
+          go get ./...
+          go mod tidy
+
+      - name: Install Python 
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      - name: Install AWS CLI
+        shell: bash
+        run: |
+          pip install awscli
+          pip install awscli-local
+          export AWS_ACCESS_KEY_ID="test"
+          export AWS_SECRET_ACCESS_KEY="test"
+          export AWS_DEFAULT_REGION="us-east-1"
+          # aws configure --profile default
+          aws configure set aws_access_key_id "test" --profile default
+          aws configure set aws_secret_access_key "test" --profile default
+          aws configure set default.region "us-east-1" --profile default
+      
+      - name: Install SamLocal 
+        shell: bash
+        run: pip install aws-sam-cli-local
+      
+      - name:  Test the code
+        shell: bash
+        run: |
+          docker compose -f ./.dev/docker-compose.yaml --env-file ./.dev/.env up -d
+          sleep 10s          
+          awslocal s3api create-bucket --bucket gitlotto
+          samlocal deploy --template-file .dev/db.yaml --stack-name gitlotto --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=gitlotto
+          
+          go test ./... -v -count=1 -p 1
+
+          docker compose -f ./.dev/docker-compose.yaml down

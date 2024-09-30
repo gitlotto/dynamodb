@@ -1,0 +1,42 @@
+version: '3.9'
+
+services:
+
+  # dynamodb:
+  #   image: amazon/dynamodb-local:latest
+  #   command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
+  #   container_name: dynamodb
+  #   restart: always
+  #   hostname: dynamodb
+  #   ports:
+  #     - "${DYNAMO_DB_EXTERNAL_PORT}:8000"
+  #   volumes:
+  #     - ${STORAGE}/dynamodb:/home/dynamodblocal/data
+
+  dynamodb-admin:
+    image: aaronshaf/dynamodb-admin:latest
+    container_name: dynamodb_admin
+    restart: always
+    hostname: dynamodb-admin
+    ports:
+      - "${DYNAMO_DB_ADMIN_PORT}:8001"
+    environment:
+      DYNAMO_ENDPOINT: http://aws:4566
+      AWS_REGION: ${AWS_REGION}
+    depends_on:
+      - localstack
+
+  localstack:
+    hostname: aws
+    container_name: "localstack_main"
+    image: localstack/localstack:3.2
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+    environment:
+      - DEBUG=1
+      - EAGER_SERVICE_LOADING=1
+      - SERVICES=sqs,secretsmanager,dynamodb,lambda,iam,cloudformation,sns,cloudwatch
+      - DYNAMODB_HEAP_SIZE=512m
+      - DYNAMODB_IN_MEMORY=1
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"

@@ -1,0 +1,16 @@
+version: '3.9'
+
+services:
+
+  localstack:
+    container_name: "localstack_main"
+    image: localstack/localstack:3.0.1
+    ports:
+      - "127.0.0.1:4566:4566"            # LocalStack Gateway
+    environment:
+      - DEBUG=1
+      - EAGER_SERVICE_LOADING=1
+      - SERVICES=sqs,secretsmanager,dynamodb,lambda,iam,cloudformation,sns,cloudwatch
+      - DYNAMODB_HEAP_SIZE=512m
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
