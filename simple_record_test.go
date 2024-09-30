@@ -12,20 +12,22 @@ import (
 
 const simpleRecordsTableName = "gitlotto.simpleRecords"
 
-type SimpleRecord struct {
+type simpleRecord struct {
 	PartitionKey string `dynamodbav:"partition_key"`
 }
 
-func (record SimpleRecord) Id() RecordIdentifier {
-	return RecordIdentifier{
-		TableName: simpleRecordsTableName,
-		PrimaryKey: PrimaryKey{
-			PartitionKey: DynamodbKey{
-				Name:  "partition_key",
-				Value: record.PartitionKey,
-			},
+func (record simpleRecord) ThePrimaryKey() PrimaryKey {
+	return PrimaryKey{
+		PartitionKey: DynamodbKey{
+			Name:  "partition_key",
+			Value: record.PartitionKey,
 		},
 	}
+}
+
+var simpleRecordsTable = DynamodbTable[simpleRecord]{
+	TableName:      simpleRecordsTableName,
+	DynamodbClient: dynamodbClient,
 }
 
 func Test_SimpleRecord_should_be_stored_in_correct_form(t *testing.T) {
@@ -33,11 +35,11 @@ func Test_SimpleRecord_should_be_stored_in_correct_form(t *testing.T) {
 
 	partitionKey := uuid.New().String()
 
-	record := SimpleRecord{
+	record := simpleRecord{
 		PartitionKey: partitionKey,
 	}
 
-	err = Persist(dynamodbClient, record)
+	err = simpleRecordsTable.Persist(record)
 	assert.NoError(t, err)
 
 	getEventOutput, err := dynamodbClient.GetItem(
@@ -64,7 +66,7 @@ func Test_SimpleRecord_should_be_stored_in_correct_form(t *testing.T) {
 
 	expectedRecord := record
 
-	actualRecord := SimpleRecord{}
+	actualRecord := simpleRecord{}
 	err = dynamodbattribute.UnmarshalMap(getEventOutput.Item, &actualRecord)
 
 	assert.NoError(t, err)
@@ -77,7 +79,7 @@ func Test_SimpleRecord_should_be_fetch_in_correct_form(t *testing.T) {
 
 	partitionKey := uuid.New().String()
 
-	record := SimpleRecord{
+	record := simpleRecord{
 		PartitionKey: partitionKey,
 	}
 
@@ -97,7 +99,7 @@ func Test_SimpleRecord_should_be_fetch_in_correct_form(t *testing.T) {
 	})
 	assert.NoError(t, err)
 
-	actualRecord, err := Fetch(dynamodbClient, record)
+	actualRecord, err := simpleRecordsTable.Fetch(record)
 	assert.NoError(t, err)
 
 	expectedRecord := record
@@ -110,11 +112,11 @@ func Test_Fetch_should_return_nil_if_the_simple_record_does_not_exist(t *testing
 
 	partitionKey := uuid.New().String()
 
-	record := SimpleRecord{
+	record := simpleRecord{
 		PartitionKey: partitionKey,
 	}
 
-	actualRecord, err := Fetch(dynamodbClient, record)
+	actualRecord, err := simpleRecordsTable.Fetch(record)
 	assert.NoError(t, err)
 	assert.Nil(t, actualRecord)
 

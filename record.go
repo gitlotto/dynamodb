@@ -7,7 +7,7 @@ import (
 )
 
 type Record interface {
-	Id() RecordIdentifier
+	ThePrimaryKey() PrimaryKey
 }
 
 type DynamodbKey struct {
@@ -20,25 +20,25 @@ type PrimaryKey struct {
 	SortKey      *DynamodbKey
 }
 
-type RecordIdentifier struct {
-	TableName  string
-	PrimaryKey PrimaryKey
+type DynamodbTable[R Record] struct {
+	TableName      string
+	DynamodbClient *dynamodb.DynamoDB
 }
 
-func Fetch[R Record](dynamodbClient *dynamodb.DynamoDB, emptyRecord R) (record *R, err error) {
-	id := emptyRecord.Id()
+func (table DynamodbTable[R]) Fetch(emptyRecord R) (record *R, err error) {
+	primaryKey := emptyRecord.ThePrimaryKey()
 	keys := map[string]*dynamodb.AttributeValue{
-		id.PrimaryKey.PartitionKey.Name: {
-			S: aws.String(id.PrimaryKey.PartitionKey.Value),
+		primaryKey.PartitionKey.Name: {
+			S: aws.String(primaryKey.PartitionKey.Value),
 		},
 	}
-	if id.PrimaryKey.SortKey != nil {
-		keys[id.PrimaryKey.SortKey.Name] = &dynamodb.AttributeValue{
-			S: aws.String(id.PrimaryKey.SortKey.Value),
+	if primaryKey.SortKey != nil {
+		keys[primaryKey.SortKey.Name] = &dynamodb.AttributeValue{
+			S: aws.String(primaryKey.SortKey.Value),
 		}
 	}
-	result, err := dynamodbClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(id.TableName),
+	result, err := table.DynamodbClient.GetItem(&dynamodb.GetItemInput{
+		TableName: aws.String(table.TableName),
 		Key:       keys,
 	})
 	if err != nil {
@@ -56,16 +56,15 @@ func Fetch[R Record](dynamodbClient *dynamodb.DynamoDB, emptyRecord R) (record *
 	return
 }
 
-func Persist[R Record](dynamodbClient *dynamodb.DynamoDB, record R) (err error) {
-	id := record.Id()
+func (table DynamodbTable[R]) Persist(record R) (err error) {
 
 	items, err := dynamodbattribute.MarshalMap(record)
 	if err != nil {
 		return
 	}
 
-	_, err = dynamodbClient.PutItem(&dynamodb.PutItemInput{
-		TableName: aws.String(id.TableName),
+	_, err = table.DynamodbClient.PutItem(&dynamodb.PutItemInput{
+		TableName: aws.String(table.TableName),
 		Item:      items,
 	})
 	return
