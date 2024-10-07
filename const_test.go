@@ -15,3 +15,44 @@ var awsConfig = aws.Config{
 var awsSession = session.Must(session.NewSession(&awsConfig))
 
 var dynamodbClient = dynamodb.New(awsSession)
+
+const simpleRecordsTableName = "gitlotto.simpleRecords"
+
+type simpleRecord struct {
+	PartitionKey string `dynamodbav:"partition_key"`
+	SomeValue    string `dynamodbav:"some_value"`
+}
+
+func (record simpleRecord) ThePrimaryKey() PrimaryKey {
+	return PrimaryKey{
+		PartitionKey: DynamodbKey{
+			Name:  "partition_key",
+			Value: record.PartitionKey,
+		},
+	}
+}
+
+var simpleRecordsTable = Table[simpleRecord]{Name: simpleRecordsTableName}
+
+const compositeRecordsTableName = "gitlotto.compositeRecords"
+
+type compositeRecord struct {
+	PartitionKey string `dynamodbav:"partition_key"`
+	SortKey      string `dynamodbav:"sort_key"`
+	SomeValue    string `dynamodbav:"some_value"`
+}
+
+func (record compositeRecord) ThePrimaryKey() PrimaryKey {
+	return PrimaryKey{
+		PartitionKey: DynamodbKey{
+			Name:  "partition_key",
+			Value: record.PartitionKey,
+		},
+		SortKey: &DynamodbKey{
+			Name:  "sort_key",
+			Value: record.SortKey,
+		},
+	}
+}
+
+var compositeRecordsTable = Table[compositeRecord]{Name: compositeRecordsTableName}
