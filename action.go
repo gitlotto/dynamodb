@@ -22,37 +22,6 @@ type TableAction[R Record] struct {
 	DynamodbClient *dynamodb.DynamoDB
 }
 
-func (table TableAction[R]) Fetch(emptyRecord R) (record *R, err error) {
-	primaryKey := emptyRecord.ThePrimaryKey()
-	keys := map[string]*dynamodb.AttributeValue{
-		primaryKey.PartitionKey.Name: {
-			S: aws.String(primaryKey.PartitionKey.Value),
-		},
-	}
-	if primaryKey.SortKey != nil {
-		keys[primaryKey.SortKey.Name] = &dynamodb.AttributeValue{
-			S: aws.String(primaryKey.SortKey.Value),
-		}
-	}
-	result, err := table.DynamodbClient.GetItem(&dynamodb.GetItemInput{
-		TableName: aws.String(table.Table.Name),
-		Key:       keys,
-	})
-	if err != nil {
-		return
-	}
-	if len(result.Item) == 0 {
-		return
-	}
-
-	err = dynamodbattribute.UnmarshalMap(result.Item, &emptyRecord)
-	if err != nil {
-		return
-	}
-	record = &emptyRecord
-	return
-}
-
 func (table TableAction[R]) Reconstitute(recordWithKey *R) (err error) {
 	if recordWithKey == nil {
 		return
