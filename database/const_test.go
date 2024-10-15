@@ -16,7 +16,7 @@ var awsSession = session.Must(session.NewSession(&awsConfig))
 
 var dynamodbClient = dynamodb.New(awsSession)
 
-const simpleRecordsTableName = "gitlotto.simpleRecords"
+const simpleRecordsTableName = "database.simpleRecords"
 
 type simpleRecord struct {
 	PartitionKey string `dynamodbav:"partition_key"`
@@ -34,7 +34,7 @@ func (record simpleRecord) ThePrimaryKey() PrimaryKey {
 
 var simpleRecordsTable = Table[simpleRecord]{Name: simpleRecordsTableName}
 
-const compositeRecordsTableName = "gitlotto.compositeRecords"
+const compositeRecordsTableName = "database.compositeRecords"
 
 type compositeRecord struct {
 	PartitionKey string `dynamodbav:"partition_key"`

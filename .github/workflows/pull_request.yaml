@@ -30,6 +30,13 @@ jobs:
         run: |
           go env -w GOPRIVATE=github.com/gitlotto
 
+          CURRENT_DIR=$(pwd)
+          
+          cd $CURRENT_DIR/database
+          go get ./...
+          go mod tidy
+
+          cd $CURRENT_DIR/env_var
           go get ./...
           go mod tidy
 
@@ -58,11 +65,19 @@ jobs:
       - name:  Test the code
         shell: bash
         run: |
+          CURRENT_DIR=$(pwd)
+
           docker compose -f ./.dev/docker-compose.yaml --env-file ./.dev/.env up -d
-          sleep 10s          
+          sleep 10s
           awslocal s3api create-bucket --bucket gitlotto
-          samlocal deploy --template-file .dev/db.yaml --stack-name gitlotto --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=gitlotto
+
+          cd $CURRENT_DIR/env_var
+          go test ./... -v -count=1 
+
+          cd $CURRENT_DIR/database         
+          samlocal deploy --template-file .dev/db.yaml --stack-name database --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=database
           
           go test ./... -v -count=1 -p 1
 
+          cd $CURRENT_DIR       
           docker compose -f ./.dev/docker-compose.yaml down
