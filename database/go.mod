@@ -1,4 +1,4 @@
-module github.com/gitlotto/database
+module github.com/gitlotto/common/database
 
 go 1.21.0
 

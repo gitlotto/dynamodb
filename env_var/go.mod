@@ -1,4 +1,4 @@
-module github.com/gitlotto/env_var
+module github.com/gitlotto/common/env_var
 
 go 1.21.0
 
