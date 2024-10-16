@@ -1,6 +1,12 @@
 go 1.21.0
 
 use (
+    ./api
+    ./batcher
 	./database
     ./env_var
+    ./logging
+    ./notification
+    ./queue
+    ./zulu
 )
