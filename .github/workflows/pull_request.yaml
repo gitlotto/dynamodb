@@ -56,7 +56,15 @@ jobs:
           go get ./...
           go mod tidy
 
+          cd $CURRENT_DIR/outboxer
+          go get ./...
+          go mod tidy
+
           cd $CURRENT_DIR/queue
+          go get ./...
+          go mod tidy
+
+          cd $CURRENT_DIR/workflows
           go get ./...
           go mod tidy
 
@@ -107,6 +115,16 @@ jobs:
 
           cd $CURRENT_DIR/env_var
           go test ./... -v -count=1 
+
+          cd $CURRENT_DIR/workflows         
+          samlocal deploy --template-file .dev/db.yaml --stack-name workflows --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=workflows
+          go test ./... -v -count=1 -p 1
+
+          cd $CURRENT_DIR/outboxer         
+          samlocal deploy --template-file .dev/db.yaml --stack-name outboxer_dynamodb --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=outboxer_dynamodb
+          samlocal deploy --template-file .dev/random_queues.yaml --stack-name outboxer_random_queues --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=outboxer_random_queues
+          samlocal deploy --template-file .dev/notification.yaml --stack-name outboxer_notification --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=outboxer_notification
+          go test ./... -v -count=1 -p 1
 
           cd $CURRENT_DIR/zulu
           go test ./... -v -count=1 

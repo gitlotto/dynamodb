@@ -3,10 +3,12 @@ go 1.21.0
 use (
     ./api
     ./batcher
-	./database
+    ./database
     ./env_var
     ./logging
     ./notification
+    ./outboxer
     ./queue
+    ./workflows
     ./zulu
 )
