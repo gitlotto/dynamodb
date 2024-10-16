@@ -1,0 +1,1 @@
+Api handles 400 and 422 http status codes

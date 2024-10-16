@@ -1,1 +1,1 @@
-Logging construct logger with requestId field
+EnvVarReader reads environment variables and logs the error.
