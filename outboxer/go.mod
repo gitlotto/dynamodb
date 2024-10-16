@@ -27,14 +27,24 @@ require github.com/gitlotto/common/database v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
-	github.com/gitlotto/common/env_var v0.10.0
-	github.com/gitlotto/common/logging v0.10.0
-	github.com/gitlotto/common/notification v0.10.0
-	github.com/gitlotto/common/queue v0.10.0
+	github.com/gitlotto/common/env_var v0.0.0-00010101000000-000000000000
+	github.com/gitlotto/common/logging v0.0.0-00010101000000-000000000000
+	github.com/gitlotto/common/notification v0.0.0-00010101000000-000000000000
+	github.com/gitlotto/common/queue v0.0.0-00010101000000-000000000000
 	github.com/gitlotto/common/workflows v0.0.0-00010101000000-000000000000
 	go.uber.org/zap v1.27.0
 )
 
-replace github.com/gitlotto/common/database => ../database
 
 replace github.com/gitlotto/common/workflows => ../workflows
+
+replace github.com/gitlotto/common/database => ../database
+
+replace github.com/gitlotto/common/env_var => ../env_var
+
+replace github.com/gitlotto/common/logging => ../logging
+
+replace github.com/gitlotto/common/notification => ../notification
+
+replace github.com/gitlotto/common/queue => ../queue
+
