@@ -10,6 +10,5 @@ use (
     ./outboxer
     ./queue
     ./workflows
-    ./outboxer
     ./zulu
 )
