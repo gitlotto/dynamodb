@@ -2,17 +2,6 @@ version: '3.9'
 
 services:
 
-  # dynamodb:
-  #   image: amazon/dynamodb-local:latest
-  #   command: "-jar DynamoDBLocal.jar -sharedDb -dbPath /home/dynamodblocal/data"
-  #   container_name: dynamodb
-  #   restart: always
-  #   hostname: dynamodb
-  #   ports:
-  #     - "${DYNAMO_DB_EXTERNAL_PORT}:8000"
-  #   volumes:
-  #     - ${STORAGE}/dynamodb:/home/dynamodblocal/data
-
   dynamodb-admin:
     image: aaronshaf/dynamodb-admin:latest
     container_name: dynamodb_admin
@@ -23,6 +12,19 @@ services:
     environment:
       DYNAMO_ENDPOINT: http://aws:4566
       AWS_REGION: ${AWS_REGION}
+    depends_on:
+      - localstack
+
+  sqs-admin:
+    image: pacovk/sqs-admin:latest
+    container_name: sqs_admin
+    restart: always
+    hostname: sqs-admin
+    ports:
+      - "${SQS_ADMIN_PORT}:3999"
+    environment:
+      SQS_ENDPOINT_URL: http://aws:4566
+      SQS_AWS_REGION: ${AWS_REGION}
     depends_on:
       - localstack
 
