@@ -458,3 +458,192 @@ func Test_Querying_should_fetch_the_last_composite_records_and_return_nil_as_a_c
 	assert.Nil(t, nextCursor)
 
 }
+
+func Test_QueryingV2_should_fetch_composite_records_from_the_beginning_if_no_cursor_is_provided(t *testing.T) {
+	var err error
+
+	partitionKey := "2231bbd9-8247-4115-941a-cf1dd87a6f1a"
+
+	firstRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "1",
+		SomeValue:    "some value 1",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(firstRecord)
+	assert.NoError(t, err)
+
+	secondRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "2",
+		SomeValue:    "some value 2",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(secondRecord)
+	assert.NoError(t, err)
+
+	thirdRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "3",
+		SomeValue:    "some value 3",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(thirdRecord)
+	assert.NoError(t, err)
+
+	fourthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "4",
+		SomeValue:    "some value 4",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fourthRecord)
+	assert.NoError(t, err)
+
+	fifthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "5",
+		SomeValue:    "some value 5",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fifthRecord)
+	assert.NoError(t, err)
+
+	limit := 2
+	actualRecords, nextCursor, err := compositeRecordsTable.Action(dynamodbClient).QueryV2(partitionKey, nil, limit)
+	assert.NoError(t, err)
+	assert.Contains(t, actualRecords, fifthRecord)
+	assert.Contains(t, actualRecords, fourthRecord)
+
+	expectedCursor := "eyJwYXJ0aXRpb25fa2V5IjoiMjIzMWJiZDktODI0Ny00MTE1LTk0MWEtY2YxZGQ4N2E2ZjFhIiwic29ydF9rZXkiOiI0In0="
+	assert.NotNil(t, nextCursor)
+	assert.Equal(t, expectedCursor, *nextCursor)
+
+}
+
+func Test_QueryingV2_should_fetch_composite_records_from_the_given_cursor(t *testing.T) {
+	var err error
+
+	partitionKey := "bc8f6d9b-cc47-46e7-a18b-489b63d8dfc4"
+
+	firstRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "1",
+		SomeValue:    "some value 1",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(firstRecord)
+	assert.NoError(t, err)
+
+	secondRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "2",
+		SomeValue:    "some value 2",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(secondRecord)
+	assert.NoError(t, err)
+
+	thirdRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "3",
+		SomeValue:    "some value 3",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(thirdRecord)
+	assert.NoError(t, err)
+
+	fourthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "4",
+		SomeValue:    "some value 4",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fourthRecord)
+	assert.NoError(t, err)
+
+	fifthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "5",
+		SomeValue:    "some value 5",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fifthRecord)
+	assert.NoError(t, err)
+
+	limit := 2
+	startingCursor := "eyJwYXJ0aXRpb25fa2V5IjoiYmM4ZjZkOWItY2M0Ny00NmU3LWExOGItNDg5YjYzZDhkZmM0IiwgInNvcnRfa2V5IjogIjQifQ=="
+
+	actualRecords, nextCursor, err := compositeRecordsTable.Action(dynamodbClient).QueryV2(partitionKey, &startingCursor, limit)
+	assert.NoError(t, err)
+	assert.Contains(t, actualRecords, thirdRecord)
+	assert.Contains(t, actualRecords, secondRecord)
+
+	expectedCursor := "eyJwYXJ0aXRpb25fa2V5IjoiYmM4ZjZkOWItY2M0Ny00NmU3LWExOGItNDg5YjYzZDhkZmM0Iiwic29ydF9rZXkiOiIyIn0="
+	assert.NotNil(t, nextCursor)
+	assert.Equal(t, expectedCursor, *nextCursor)
+
+}
+
+func Test_QueryingV2_should_fetch_the_last_composite_records_and_return_nil_as_a_cursor(t *testing.T) {
+	var err error
+
+	partitionKey := "80f8f38f-8f63-4340-850d-fcbd6b95d826"
+
+	firstRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "1",
+		SomeValue:    "some value 1",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(firstRecord)
+	assert.NoError(t, err)
+
+	secondRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "2",
+		SomeValue:    "some value 2",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(secondRecord)
+	assert.NoError(t, err)
+
+	thirdRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "3",
+		SomeValue:    "some value 3",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(thirdRecord)
+	assert.NoError(t, err)
+
+	fourthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "4",
+		SomeValue:    "some value 4",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fourthRecord)
+	assert.NoError(t, err)
+
+	fifthRecord := compositeRecord{
+		PartitionKey: partitionKey,
+		SortKey:      "5",
+		SomeValue:    "some value 5",
+	}
+
+	err = compositeRecordsTable.Action(dynamodbClient).Persist(fifthRecord)
+	assert.NoError(t, err)
+
+	limit := 10
+	startingCursor := "eyJwYXJ0aXRpb25fa2V5IjoiODBmOGYzOGYtOGY2My00MzQwLTg1MGQtZmNiZDZiOTVkODI2IiwgInNvcnRfa2V5IjogIjQifQ=="
+
+	actualRecords, nextCursor, err := compositeRecordsTable.Action(dynamodbClient).QueryV2(partitionKey, &startingCursor, limit)
+	assert.NoError(t, err)
+	assert.Contains(t, actualRecords, thirdRecord)
+	assert.Contains(t, actualRecords, secondRecord)
+	assert.Contains(t, actualRecords, firstRecord)
+
+	assert.Nil(t, nextCursor)
+
+}
