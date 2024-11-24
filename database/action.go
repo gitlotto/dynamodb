@@ -1,6 +1,8 @@
 package database
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -127,5 +129,86 @@ func (table TableAction[R]) Query(partitionKey string, cursor *PrimaryKey, limit
 		}
 		nextCursor = &nextCursorCandidate
 	}
+	return
+}
+
+func (table TableAction[R]) QueryV2(partitionKey string, cursor *string, limit int) (records []R, nextCursor *string, err error) {
+
+	queryInput := &dynamodb.QueryInput{
+		TableName:              aws.String(table.Name),
+		KeyConditionExpression: aws.String(fmt.Sprintf("%s = :the_partition_key", table.Schema.PartitionKeyName)),
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":the_partition_key": {
+				S: aws.String(partitionKey),
+			},
+		},
+		ScanIndexForward: aws.Bool(false),
+	}
+
+	if cursor != nil {
+		exclusiveStartKey, errOfDecoding := decodeCursor(*cursor)
+		if errOfDecoding != nil {
+			err = errOfDecoding
+			return
+		}
+		queryInput.ExclusiveStartKey = exclusiveStartKey
+	}
+
+	queryInput.Limit = aws.Int64(int64(limit))
+
+	items, err := table.DynamodbClient.Query(queryInput)
+	if err != nil {
+		return
+	}
+
+	records = make([]R, len(items.Items))
+	err = dynamodbattribute.UnmarshalListOfMaps(items.Items, &records)
+	if err != nil {
+		return
+	}
+
+	nextCursor, err = encodeCursor(items.LastEvaluatedKey)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func decodeCursor(cursor string) (exclusiveStartKey map[string]*dynamodb.AttributeValue, err error) {
+	var decodedCursor []byte
+	decodedCursor, err = base64.StdEncoding.DecodeString(cursor)
+	if err != nil {
+		return
+	}
+	cursorAttributes := map[string]string{}
+	err = json.Unmarshal(decodedCursor, &cursorAttributes)
+	if err != nil {
+		return
+	}
+
+	exclusiveStartKey = map[string]*dynamodb.AttributeValue{}
+	for key, value := range cursorAttributes {
+		exclusiveStartKey[key] = &dynamodb.AttributeValue{
+			S: aws.String(value),
+		}
+	}
+	return
+}
+
+func encodeCursor(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor *string, err error) {
+	if len(exclusiveStartKey) == 0 {
+		return
+	}
+	cursorAttributes := map[string]string{}
+	for key, value := range exclusiveStartKey {
+		cursorAttributes[key] = *value.S
+	}
+	var cursorBytes []byte
+	cursorBytes, err = json.Marshal(cursorAttributes)
+	if err != nil {
+		return
+	}
+	cursorCandidate := base64.StdEncoding.EncodeToString(cursorBytes)
+	cursor = &cursorCandidate
 	return
 }
