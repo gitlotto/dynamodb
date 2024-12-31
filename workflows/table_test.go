@@ -112,7 +112,7 @@ func Test_WorkflowRecordTable_should_close_the_workflow_if_it_is_still_open(t *t
 
 	finishedAt := zulu.DateTimeFromTime(time.Date(2023, time.October, 17, 12, 45, 14, 0, time.UTC))
 
-	err = workflowRecordTable.Close(workflow.EventId.String(), workflow.TargetQueueUrl, finishedAt)
+	err = workflowRecordTable.Close(workflow.EventId, workflow.TargetQueueUrl, finishedAt)
 	assert.NoError(t, err)
 
 	actualWorkflow := WorkflowRecord{
@@ -154,7 +154,7 @@ func Test_WorkflowRecordTable_should_not_close_the_workflow_if_it_had_been_close
 
 	finishedAt := zulu.DateTimeFromTime(time.Date(2023, time.October, 17, 12, 45, 14, 0, time.UTC))
 
-	err = workflowRecordTable.Close(workflow.EventId.String(), workflow.TargetQueueUrl, finishedAt)
+	err = workflowRecordTable.Close(workflow.EventId, workflow.TargetQueueUrl, finishedAt)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, ErrWorkflowHadBeenFinished)
 
@@ -193,7 +193,7 @@ func Test_WorkflowRecordTable_should_close_the_workflow_in_a_transaction_if_it_i
 
 	err = database.
 		NewTransaction().
-		Include(workflowRecordTable.TransactionalClose(workflow.EventId.String(), workflow.TargetQueueUrl, finishedAt)).
+		Include(workflowRecordTable.TransactionalClose(workflow.EventId, workflow.TargetQueueUrl, finishedAt)).
 		Execute(dynamodbClient)
 
 	assert.NoError(t, err)
@@ -239,7 +239,7 @@ func Test_WorkflowRecordTable_should_not_close_the_workflow_in_a_transaction_if_
 
 	err = database.
 		NewTransaction().
-		Include(workflowRecordTable.TransactionalClose(workflow.EventId.String(), workflow.TargetQueueUrl, finishedAt)).
+		Include(workflowRecordTable.TransactionalClose(workflow.EventId, workflow.TargetQueueUrl, finishedAt)).
 		Execute(dynamodbClient)
 	assert.Error(t, err)
 	assert.ErrorIs(t, err, database.ErrConditionalCheckFailed)

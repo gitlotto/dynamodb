@@ -82,9 +82,7 @@ func Test_new_fifo_workflowRecord_should_be_stored_in_correct_form(t *testing.T)
 	assert.NoError(t, err)
 
 	actualWorkflow := WorkflowRecord{
-		EventId: EventId{
-			value: eventId,
-		},
+		EventId:        eventId,
 		TargetQueueUrl: targetQueueUrl,
 	}
 	err = workflowRecordTable.Action(dynamodbClient).Reconstitute(&actualWorkflow)
@@ -155,9 +153,7 @@ func Test_Closed_WorkflowRecord_should_be_stored_in_correct(t *testing.T) {
 	assert.NoError(t, err)
 
 	actualWorkflow := WorkflowRecord{
-		EventId: EventId{
-			value: eventId,
-		},
+		EventId:        eventId,
 		TargetQueueUrl: targetQueueUrl,
 	}
 	err = workflowRecordTable.Action(dynamodbClient).Reconstitute(&actualWorkflow)

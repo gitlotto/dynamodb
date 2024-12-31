@@ -11,4 +11,5 @@ use (
     ./queue
     ./workflows
     ./zulu
+    ./direct_pass
 )
