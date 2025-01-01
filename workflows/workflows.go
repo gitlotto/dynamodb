@@ -16,7 +16,7 @@ func ErrFifoWorkflowQueueMismatch(queueUrl string) error {
 }
 
 type WorkflowRecord struct {
-	EventId             EventId        `dynamodbav:"event_id"`
+	EventId             string         `dynamodbav:"event_id"`
 	TargetQueueUrl      string         `dynamodbav:"target_queue_url"`
 	CreatedAt           zulu.DateTime  `dynamodbav:"created_at"`
 	StartAt             zulu.DateTime  `dynamodbav:"start_at"`
@@ -31,7 +31,7 @@ func (record WorkflowRecord) ThePrimaryKey() database.PrimaryKey {
 	return database.PrimaryKey{
 		PartitionKey: database.DynamodbKey{
 			Name:  "event_id",
-			Value: record.EventId.value,
+			Value: record.EventId,
 		},
 		SortKey: &database.DynamodbKey{
 			Name:  "target_queue_url",
@@ -41,7 +41,7 @@ func (record WorkflowRecord) ThePrimaryKey() database.PrimaryKey {
 }
 
 func (record WorkflowRecord) EventMessageDeduplicationId() string {
-	deduplicationIdInBytes := sha256.Sum256([]byte(record.EventId.String()))
+	deduplicationIdInBytes := sha256.Sum256([]byte(record.EventId))
 	deduplicationIdInString := hex.EncodeToString(deduplicationIdInBytes[:])
 	return deduplicationIdInString
 }
@@ -63,7 +63,7 @@ func NewFifoWorkflowRecord(
 	eventId := NewEventId(tableName, partitionKey, sortKey)
 	amountOfStarts := 0
 	workflowRecord := WorkflowRecord{
-		EventId:             eventId,
+		EventId:             eventId.String(),
 		CreatedAt:           createdAt,
 		StartAt:             startAt,
 		AmountOfStarts:      amountOfStarts,

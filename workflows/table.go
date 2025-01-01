@@ -21,7 +21,7 @@ func (table WorkflowRecordTable) Postpone(workflow WorkflowRecord, nextStartAt z
 		TableName: aws.String(table.Table.Name),
 		Key: map[string]*dynamodb.AttributeValue{
 			"event_id": {
-				S: aws.String(workflow.EventId.String()),
+				S: aws.String(workflow.EventId),
 			},
 			"target_queue_url": {
 				S: aws.String(workflow.TargetQueueUrl),
