@@ -15,7 +15,7 @@ In distributed systems, a workflow is a sequence of processes or steps that coll
 ![Workflow Diagram](outboxer_1.png)
 
 **Process 1:**
-This process handles the execution of a long-running task in an asynchronous way. It prevents blocking or delays in upstream systems, enables scalability by processing tasks independently, and provides fault tolerance with retry mechanisms if something fails.
+This process handles the execution of a long-running task in an asynchronous way. It prevents blocking or delays in upstream systems, enables scalability by processing tasks independently.
 
 **Process 2:**
 This process uses message affinity to ensure that events belonging to the same group are routed to the same processing unit. This ensures sequential processing without the need for locks.
@@ -27,11 +27,11 @@ This process uses a queue to maintain its logical boundaries, ensuring it remain
 
 ### Critical Traits of a Reliable Workflow
 
-In a distributed system, events may be published multiple times due to retries or failures. To ensure reliability and achieve the exactly-once guarantee, the workflow must handle duplicates safely and without side effects. This is achieved through Idempotency and Affinity. 
+In a distributed system, events may be published multiple times due to retries or failures. To ensure **reliability** and achieve the **exactly-once guarantee**, the workflow must handle duplicates safely and without side effects. This is achieved through **Idempotency** and **Affinity**. 
 1. **Idempotency:**
 Idempotency ensures that processing the same event repeatedly produces consistent results without side effects. For instance, if a payment event is processed multiple times, idempotency guarantees that the user's account is only charged once. This is typically implemented by assigning a unique identifier to each event and checking if it has already been processed before applying any changes. Idempotency is a cornerstone of reliability in distributed systems, as it mitigates the risks posed by retries and duplicate messages.
 2. **Affinity:**
-Affinity guarantees that all instances of the same event are routed to the same processing unit. This prevents race conditions, where multiple instances of the same event could be processed concurrently, leading to conflicts or inconsistent outcomes. Affinity is often achieved by using mechanisms like partition keys in Kafka or message group IDs in SQS, ensuring that related events are handled in sequence by the same consumer. By preserving the logical grouping of events, affinity maintains order and consistency across the workflow.
+Affinity guarantees that all instances of the same event are routed to the same processing unit. This prevents race conditions, where multiple instances of the same event could be processed concurrently, leading to conflicts or inconsistent outcomes. Affinity is often achieved by using mechanisms like partitions in Kafka or message groups in SQS, ensuring that related events are handled in sequence by the same consumer. By preserving the logical grouping of events, affinity maintains order and consistency across the workflow.
 
 ### Process Under the Microscope?
 
@@ -43,7 +43,7 @@ Let’s focus on the process in detail. This process performs calculations, pers
 
 ### What Could Possibly Go Wrong?
 
-The process is neither ACID nor BASE, leaving it vulnerable to inconsistencies. Without ACID properties, the database and queue operations are not atomic, meaning partial successes can leave the system in an incomplete state. For example, if the database transaction succeeds but the event fails to publish to the queue, downstream processes will never be triggered. Similarly, the lack of BASE principles means the system does not ensure eventual consistency; the failed event won't be retried or processed later. As a result, there’s no built-in mechanism to recover from these errors, and manual intervention or custom error-handling logic becomes necessary.
+The process is neither ACID nor BASE, leaving it vulnerable to inconsistencies. Without ACID properties, the database and queue operations are not atomic, meaning partial successes can leave the system in an incomplete state. For example, if the database transaction succeeds but the event fails to publish to the queue, downstream processes will never be triggered. Similarly, the lack of BASE principles means the system does not ensure eventual consistency; the failed event won't be retried or processed later. As a result, there’s no built-in mechanism to recover from these errors, and manual intervention becomes necessary.
 
 ![What Could Possibly Go Wrong](outboxer_3.png)
 
@@ -51,17 +51,16 @@ The process is neither ACID nor BASE, leaving it vulnerable to inconsistencies. 
 
 ### The Outboxer to the Rescue
 
-The **Outbox Pattern** solves this problem by introducing an intermediate step. Instead of publishing an event directly to the queue, the process:
+The **Outbox Pattern** solves this problem by introducing an intermediate step.
 
 ![Outbox Pattern](outboxer_4.png)
 
+Instead of publishing an event directly to the queue, the process:
 1. Persists the event in an **outbox table** within the same transaction as the database changes. The process persists both the data and the event in the database as part of a single **ACID transaction**: both the data and the event are written in one transaction. The event is persisted in an **outbox table**.
 2. A separate process, called the **Outboxer**, polls the database for events and publishes them to the queue.
 The Outboxer is BASE: It works asynchronously and ensures eventual consistency by retrying until the event is successfully published.
-The Outboxer is the Achilles heel of the system: if it fails, events will remain stuck in the database, preventing downstream processes from continuing. This can disrupt the entire workflow and lead to system-wide delays or inconsistencies. It must be heavily monitored and in case of failures must be notified,  addressed and fixed immediately to maintain reliability and avoid system bottlenecks.
 
 This design guarantees atomicity for the process, ensuring that the database state and the event publishing are consistent.
-
 
 ---
 
@@ -95,15 +94,6 @@ The Outbox Pattern provides visibility into the status of events by maintaining 
 
 The outbox table enables the downstream process to verify the status of a command before proceeding. If the downstream process encounters the same event multiple times (e.g., due to retries or duplicates), it can check the status of the corresponding entry in the outbox table. If the status is still marked as open, the process can proceed with confidence, knowing it is safe to handle the event. Once the event is processed, the downstream process marks it as completed.
 This approach ensures an exactly-once guarantee by combining idempotency, which guarantees consistent outcomes even with repeated processing, and the outbox table's ability to track and update event statuses, preventing reprocessing of already-handled events.
-
----
-
-### Other Benefits of the Outboxer
-1. **Atomicity**: Database updates and event publishing occur together, preventing inconsistent states.
-2. **Retry Mechanisms**: If the Outboxer fails to publish an event, it retries until the operation succeeds.
-3. **Delayed Delivery**: Events can be delayed intentionally by controlling when the Outboxer processes them.
-4. **Resilience**: Even if downstream systems are temporarily unavailable, the event remains safe in the outbox.
-5. **Scalability**: The Outboxer’s workload can scale independently of the main workflow processes.
 
 ---
 
@@ -146,11 +136,11 @@ If the database lacks support for push mechanisms like streams, we can partially
 
 In this hybrid approach:
 
-1. Primary Workflow: The process writes the event to both the database and the outbox table as part of a single transaction. After the transaction is committed, the event is directly published to the queue.
+**1. Primary Workflow**: The process writes the event to both the database and the outbox table as part of a single transaction. After the transaction is committed, the event is directly published to the queue.
 
-2. Fallback for Failures: If the queue write fails, the event remains in the outbox table, ensuring it can be recovered and processed later by the polling mechanism.
+**2. Fallback for Failures**: If the queue write fails, the event remains in the outbox table, ensuring it can be recovered and processed later by the polling mechanism.
 
-3. Delayed Delivery: For scenarios requiring delayed delivery, the event is stored in the outbox table but skipped for immediate queue writing. The polling mechanism processes and publishes the event to the queue after the required delay.
+**3. Delayed Delivery**: For scenarios requiring delayed delivery, the event is stored in the outbox table but skipped for immediate queue writing. The polling mechanism processes and publishes the event to the queue after the required delay.
 
 This hybrid design balances simplicity, reliability, and flexibility. It allows real-time event propagation when needed, ensures robust recovery for failures, and provides a mechanism for delayed delivery when required—all without requiring a push-based database.
 
