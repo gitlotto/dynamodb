@@ -98,15 +98,6 @@ This approach ensures an exactly-once guarantee by combining idempotency, which 
 
 ---
 
-### Other Benefits of the Outboxer
-1. **Atomicity**: Database updates and event publishing occur together, preventing inconsistent states.
-2. **Retry Mechanisms**: If the Outboxer fails to publish an event, it retries until the operation succeeds.
-3. **Delayed Delivery**: Events can be delayed intentionally by controlling when the Outboxer processes them.
-4. **Resilience**: Even if downstream systems are temporarily unavailable, the event remains safe in the outbox.
-5. **Scalability**: The Outboxer’s workload can scale independently of the main workflow processes.
-
----
-
 ### Drawbacks of Polling in the Outbox Pattern
 
 1. **Spikiness**: Since the system relies on periodic polling, bursts of activity can lead to uneven loads on both the polling mechanism and the downstream systems. This can cause processing spikes and inefficiencies.
