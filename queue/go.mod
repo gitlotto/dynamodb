@@ -1,6 +1,6 @@
 module github.com/gitlotto/common/queue
 
-go 1.21.0
+go 1.23.6
 
 require (
 	github.com/aws/aws-lambda-go v1.41.0

@@ -1,6 +1,6 @@
 module github.com/gitlotto/common/logging
 
-go 1.21.0
+go 1.23.6
 
 require go.uber.org/zap v1.26.0
 

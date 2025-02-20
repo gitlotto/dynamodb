@@ -104,10 +104,10 @@ jobs:
           awslocal s3api create-bucket --bucket gitlotto
 
           cd $CURRENT_DIR/api
-          go test ./... -v -count=1 
+          go test ./... -v -count=1 -p 1
 
           cd $CURRENT_DIR/batcher
-          go test ./... -v -count=1 
+          go test ./... -v -count=1 -p 1
 
           cd $CURRENT_DIR/database         
           samlocal deploy --template-file .dev/db.yaml --stack-name database --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND --s3-bucket gitlotto --parameter-overrides TheStackName=database

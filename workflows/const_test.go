@@ -26,8 +26,7 @@ type Event struct {
 
 var workflowRecordTable = WorkflowRecordTable{
 	Table: database.Table[WorkflowRecord]{
-		Schema: database.CompositeSchema("event_id", "target_queue_url"),
-		Name:   workflowsTableName,
+		Name: workflowsTableName,
 	},
 	DynamodbClient: dynamodbClient,
 }

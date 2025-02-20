@@ -1,6 +1,6 @@
 module github.com/gitlotto/common/zulu
 
-go 1.21.0
+go 1.23.6
 
 require github.com/aws/aws-sdk-go v1.50.28
 

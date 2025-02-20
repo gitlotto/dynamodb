@@ -32,10 +32,12 @@ func (record WorkflowRecord) ThePrimaryKey() database.PrimaryKey {
 		PartitionKey: database.DynamodbKey{
 			Name:  "event_id",
 			Value: record.EventId,
+			Type:  database.KeyTypeString,
 		},
 		SortKey: &database.DynamodbKey{
 			Name:  "target_queue_url",
 			Value: record.TargetQueueUrl,
+			Type:  database.KeyTypeString,
 		},
 	}
 }

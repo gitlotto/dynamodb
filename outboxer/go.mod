@@ -1,6 +1,6 @@
 module github.com/gitlotto/common/outboxer
 
-go 1.21.0
+go 1.23.6
 
 require (
 	github.com/aws/aws-sdk-go v1.51.30
@@ -35,7 +35,6 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-
 replace github.com/gitlotto/common/workflows => ../workflows
 
 replace github.com/gitlotto/common/database => ../database
@@ -47,4 +46,3 @@ replace github.com/gitlotto/common/logging => ../logging
 replace github.com/gitlotto/common/notification => ../notification
 
 replace github.com/gitlotto/common/queue => ../queue
-

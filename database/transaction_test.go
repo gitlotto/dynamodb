@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/rand"
 )
 
 type simpleRecordTransactions struct {
@@ -78,7 +79,7 @@ func Test_Transaction_should_execute(t *testing.T) {
 
 	compositeRecord1 := compositeRecord{
 		PartitionKey: uuid.New().String(),
-		SortKey:      uuid.New().String(),
+		SortKey:      rand.Int(),
 		SomeValue:    "some value",
 	}
 
@@ -123,7 +124,7 @@ func Test_Transaction_should_handle_the_error_upon_the_failure_of_the_condition(
 
 	compositeRecord1 := compositeRecord{
 		PartitionKey: uuid.New().String(),
-		SortKey:      uuid.New().String(),
+		SortKey:      rand.Int(),
 		SomeValue:    "some value",
 	}
 
