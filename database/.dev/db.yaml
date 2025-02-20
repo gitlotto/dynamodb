@@ -33,7 +33,7 @@ Resources:
         - AttributeName: partition_key
           AttributeType: S
         - AttributeName: sort_key
-          AttributeType: S
+          AttributeType: N
       KeySchema:
         - AttributeName: partition_key
           KeyType: HASH

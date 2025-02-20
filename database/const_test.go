@@ -1,6 +1,8 @@
 package database
 
 import (
+	"strconv"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -28,6 +30,7 @@ func (record simpleRecord) ThePrimaryKey() PrimaryKey {
 		PartitionKey: DynamodbKey{
 			Name:  "partition_key",
 			Value: record.PartitionKey,
+			Type:  KeyTypeString,
 		},
 	}
 }
@@ -41,7 +44,7 @@ const compositeRecordsTableName = "database.compositeRecords"
 
 type compositeRecord struct {
 	PartitionKey string `dynamodbav:"partition_key"`
-	SortKey      string `dynamodbav:"sort_key"`
+	SortKey      int    `dynamodbav:"sort_key"`
 	SomeValue    string `dynamodbav:"some_value"`
 }
 
@@ -50,10 +53,12 @@ func (record compositeRecord) ThePrimaryKey() PrimaryKey {
 		PartitionKey: DynamodbKey{
 			Name:  "partition_key",
 			Value: record.PartitionKey,
+			Type:  KeyTypeString,
 		},
 		SortKey: &DynamodbKey{
 			Name:  "sort_key",
-			Value: record.SortKey,
+			Value: strconv.Itoa(record.SortKey),
+			Type:  KeyTypeNumber,
 		},
 	}
 }

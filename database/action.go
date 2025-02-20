@@ -30,14 +30,10 @@ func (table TableAction[R]) Reconstitute(recordWithKey *R) (err error) {
 	}
 	primaryKey := (*recordWithKey).ThePrimaryKey()
 	keys := map[string]*dynamodb.AttributeValue{
-		primaryKey.PartitionKey.Name: {
-			S: aws.String(primaryKey.PartitionKey.Value),
-		},
+		primaryKey.PartitionKey.Name: primaryKey.PartitionKey.AttributeValue(),
 	}
 	if primaryKey.SortKey != nil {
-		keys[primaryKey.SortKey.Name] = &dynamodb.AttributeValue{
-			S: aws.String(primaryKey.SortKey.Value),
-		}
+		keys[primaryKey.SortKey.Name] = primaryKey.SortKey.AttributeValue()
 	}
 	result, err := table.DynamodbClient.GetItem(&dynamodb.GetItemInput{
 		TableName: aws.String(table.Table.Name),
@@ -71,82 +67,19 @@ func (table TableAction[R]) Persist(record R) (err error) {
 	return
 }
 
-func (table TableAction[R]) Query(partitionKey string, cursor *PrimaryKey, limit int) (records []R, nextCursor *PrimaryKey, err error) {
+func (table TableAction[R]) Query(partitionKey DynamodbKey, cursor *string, limit int) (records []R, nextCursor *string, err error) {
 
 	queryInput := &dynamodb.QueryInput{
 		TableName:              aws.String(table.Name),
-		KeyConditionExpression: aws.String(fmt.Sprintf("%s = :the_partition_key", table.Schema.PartitionKeyName)),
+		KeyConditionExpression: aws.String(fmt.Sprintf("%s = :the_partition_key", partitionKey.Name)),
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":the_partition_key": {
-				S: aws.String(partitionKey),
-			},
+			":the_partition_key": partitionKey.AttributeValue(),
 		},
 		ScanIndexForward: aws.Bool(false),
 	}
 
 	if cursor != nil {
-		queryInput.ExclusiveStartKey = map[string]*dynamodb.AttributeValue{
-			cursor.PartitionKey.Name: {
-				S: aws.String(cursor.PartitionKey.Value),
-			},
-			cursor.SortKey.Name: {
-				S: aws.String(cursor.SortKey.Value),
-			},
-		}
-	}
-
-	queryInput.Limit = aws.Int64(int64(limit))
-
-	items, err := table.DynamodbClient.Query(queryInput)
-	if err != nil {
-		return
-	}
-
-	records = make([]R, len(items.Items))
-	err = dynamodbattribute.UnmarshalListOfMaps(items.Items, &records)
-
-	if len(items.LastEvaluatedKey) != 0 {
-		var nextCursorCandidate PrimaryKey
-		nextPartitionKey, nextPartitionKeyExists := items.LastEvaluatedKey[table.Schema.PartitionKeyName]
-		if !nextPartitionKeyExists {
-			return nil, nil, fmt.Errorf("missing partition key in last evaluated key")
-		}
-		nextCursorCandidate = PrimaryKey{
-			PartitionKey: DynamodbKey{
-				Name:  table.Schema.PartitionKeyName,
-				Value: *nextPartitionKey.S,
-			},
-		}
-		if table.Schema.SortKeyName != nil {
-			nextSortKey, nextSortKeyExists := items.LastEvaluatedKey[*table.Schema.SortKeyName]
-			if !nextSortKeyExists {
-				return nil, nil, fmt.Errorf("missing sort key in last evaluated key")
-			}
-			nextCursorCandidate.SortKey = &DynamodbKey{
-				Name:  *table.Schema.SortKeyName,
-				Value: *nextSortKey.S,
-			}
-		}
-		nextCursor = &nextCursorCandidate
-	}
-	return
-}
-
-func (table TableAction[R]) QueryV2(partitionKey string, cursor *string, limit int) (records []R, nextCursor *string, err error) {
-
-	queryInput := &dynamodb.QueryInput{
-		TableName:              aws.String(table.Name),
-		KeyConditionExpression: aws.String(fmt.Sprintf("%s = :the_partition_key", table.Schema.PartitionKeyName)),
-		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
-			":the_partition_key": {
-				S: aws.String(partitionKey),
-			},
-		},
-		ScanIndexForward: aws.Bool(false),
-	}
-
-	if cursor != nil {
-		exclusiveStartKey, errOfDecoding := decodeCursor(*cursor)
+		exclusiveStartKey, errOfDecoding := decodeCursorV2(*cursor)
 		if errOfDecoding != nil {
 			err = errOfDecoding
 			return
@@ -167,7 +100,7 @@ func (table TableAction[R]) QueryV2(partitionKey string, cursor *string, limit i
 		return
 	}
 
-	nextCursor, err = encodeCursor(items.LastEvaluatedKey)
+	nextCursor, err = encodeCursorV2(items.LastEvaluatedKey)
 	if err != nil {
 		return
 	}
@@ -195,6 +128,25 @@ func decodeCursor(cursor string) (exclusiveStartKey map[string]*dynamodb.Attribu
 	return
 }
 
+func decodeCursorV2(cursor string) (exclusiveStartKey map[string]*dynamodb.AttributeValue, err error) {
+	var decodedCursor []byte
+	decodedCursor, err = base64.StdEncoding.DecodeString(cursor)
+	if err != nil {
+		return
+	}
+	cursorAttributes := map[string]AttributeValueWrapper{}
+	err = json.Unmarshal(decodedCursor, &cursorAttributes)
+	if err != nil {
+		return
+	}
+
+	exclusiveStartKey = map[string]*dynamodb.AttributeValue{}
+	for key, value := range cursorAttributes {
+		exclusiveStartKey[key] = value.AttributeValue
+	}
+	return
+}
+
 func encodeCursor(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor *string, err error) {
 	if len(exclusiveStartKey) == 0 {
 		return
@@ -211,4 +163,163 @@ func encodeCursor(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor
 	cursorCandidate := base64.StdEncoding.EncodeToString(cursorBytes)
 	cursor = &cursorCandidate
 	return
+}
+
+func encodeCursorV2(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor *string, err error) {
+	if len(exclusiveStartKey) == 0 {
+		return
+	}
+	cursorAttributes := map[string]*AttributeValueWrapper{}
+	for key, value := range exclusiveStartKey {
+		cursorAttributes[key] = &AttributeValueWrapper{value}
+	}
+	var cursorBytes []byte
+	cursorBytes, err = json.Marshal(cursorAttributes)
+	if err != nil {
+		return
+	}
+	cursorCandidate := base64.StdEncoding.EncodeToString(cursorBytes)
+	cursor = &cursorCandidate
+	return
+}
+
+type AttributeValueWrapper struct {
+	*dynamodb.AttributeValue
+}
+
+// **MarshalJSON for the wrapper**
+func (avw *AttributeValueWrapper) MarshalJSON() ([]byte, error) {
+	jsonAV := toJson(avw.AttributeValue)
+	return json.Marshal(jsonAV)
+}
+
+// **UnmarshalJSON for the wrapper**
+func (avw *AttributeValueWrapper) UnmarshalJSON(data []byte) error {
+	var jsonAV AttributeValueJSON
+	if err := json.Unmarshal(data, &jsonAV); err != nil {
+		return err
+	}
+	avw.AttributeValue = fromJson(&jsonAV)
+	return nil
+}
+
+type AttributeValueJSON struct {
+	B    []byte                         `json:"B,omitempty"`
+	BOOL *bool                          `json:"BOOL,omitempty"`
+	BS   [][]byte                       `json:"BS,omitempty"`
+	L    []*AttributeValueJSON          `json:"L,omitempty"`
+	M    map[string]*AttributeValueJSON `json:"M,omitempty"`
+	N    *string                        `json:"N,omitempty"`
+	NS   []*string                      `json:"NS,omitempty"`
+	NULL *bool                          `json:"NULL,omitempty"`
+	S    *string                        `json:"S,omitempty"`
+	SS   []*string                      `json:"SS,omitempty"`
+}
+
+// Convert from AttributeValue to AttributeValueJSON
+func toJson(av *dynamodb.AttributeValue) *AttributeValueJSON {
+	if av == nil {
+		return nil
+	}
+
+	jsonAV := &AttributeValueJSON{}
+
+	if av.B != nil {
+		jsonAV.B = av.B
+	}
+	if av.BOOL != nil {
+		jsonAV.BOOL = av.BOOL
+	}
+	if av.BS != nil && len(av.BS) > 0 {
+		jsonAV.BS = av.BS
+	}
+	if av.L != nil && len(av.L) > 0 {
+		jsonAV.L = listToJson(av.L)
+	}
+	if av.M != nil && len(av.M) > 0 {
+		jsonAV.M = mapToJson(av.M)
+	}
+	if av.N != nil {
+		jsonAV.N = av.N
+	}
+	if av.NS != nil && len(av.NS) > 0 {
+		jsonAV.NS = av.NS
+	}
+	if av.NULL != nil {
+		jsonAV.NULL = av.NULL
+	}
+	if av.S != nil {
+		jsonAV.S = av.S
+	}
+	if av.SS != nil && len(av.SS) > 0 {
+		jsonAV.SS = av.SS
+	}
+
+	return jsonAV
+}
+
+// Helper function to convert list of AttributeValues
+func listToJson(list []*dynamodb.AttributeValue) []*AttributeValueJSON {
+	if list == nil {
+		return nil
+	}
+	result := make([]*AttributeValueJSON, len(list))
+	for i, item := range list {
+		result[i] = toJson(item)
+	}
+	return result
+}
+
+func mapToJson(m map[string]*dynamodb.AttributeValue) map[string]*AttributeValueJSON {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]*AttributeValueJSON)
+	for key, value := range m {
+		result[key] = toJson(value)
+	}
+	return result
+}
+
+func fromJson(jsonAV *AttributeValueJSON) *dynamodb.AttributeValue {
+	if jsonAV == nil {
+		return nil
+	}
+
+	return &dynamodb.AttributeValue{
+		B:    jsonAV.B,
+		BOOL: jsonAV.BOOL,
+		BS:   jsonAV.BS,
+		L:    listFromJSON(jsonAV.L),
+		M:    mapFromJSON(jsonAV.M),
+		N:    jsonAV.N,
+		NS:   jsonAV.NS,
+		NULL: jsonAV.NULL,
+		S:    jsonAV.S,
+		SS:   jsonAV.SS,
+	}
+}
+
+// Helper function to convert list of AttributeValueJSON to AttributeValue
+func listFromJSON(list []*AttributeValueJSON) []*dynamodb.AttributeValue {
+	if list == nil {
+		return nil
+	}
+	result := make([]*dynamodb.AttributeValue, len(list))
+	for i, item := range list {
+		result[i] = fromJson(item)
+	}
+	return result
+}
+
+// Helper function to convert map of AttributeValueJSON to AttributeValue
+func mapFromJSON(m map[string]*AttributeValueJSON) map[string]*dynamodb.AttributeValue {
+	if m == nil {
+		return nil
+	}
+	result := make(map[string]*dynamodb.AttributeValue)
+	for key, value := range m {
+		result[key] = fromJson(value)
+	}
+	return result
 }

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/exp/rand"
 )
 
 func Test_Transaction_insert_should_put_a_simple_record_into_the_database(t *testing.T) {
@@ -32,7 +33,7 @@ func Test_Transaction_insert_should_put_a_composite_record_into_the_database(t *
 
 	compositeRecord1 := compositeRecord{
 		PartitionKey: uuid.New().String(),
-		SortKey:      uuid.New().String(),
+		SortKey:      rand.Int(),
 		SomeValue:    "some value",
 	}
 
@@ -72,7 +73,7 @@ func Test_Transaction_insert_should_not_put_a_composite_record_into_the_database
 
 	compositeRecord1 := compositeRecord{
 		PartitionKey: uuid.New().String(),
-		SortKey:      uuid.New().String(),
+		SortKey:      rand.Int(),
 		SomeValue:    "some value",
 	}
 
