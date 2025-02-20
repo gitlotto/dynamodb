@@ -36,8 +36,7 @@ func (record simpleRecord) ThePrimaryKey() PrimaryKey {
 }
 
 var simpleRecordsTable = Table[simpleRecord]{
-	Schema: SimpleSchema("partition_key"),
-	Name:   simpleRecordsTableName,
+	Name: simpleRecordsTableName,
 }
 
 const compositeRecordsTableName = "database.compositeRecords"
@@ -64,6 +63,5 @@ func (record compositeRecord) ThePrimaryKey() PrimaryKey {
 }
 
 var compositeRecordsTable = Table[compositeRecord]{
-	Name:   compositeRecordsTableName,
-	Schema: CompositeSchema("partition_key", "sort_key"),
+	Name: compositeRecordsTableName,
 }

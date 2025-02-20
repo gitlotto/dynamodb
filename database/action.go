@@ -79,7 +79,7 @@ func (table TableAction[R]) Query(partitionKey DynamodbKey, cursor *string, limi
 	}
 
 	if cursor != nil {
-		exclusiveStartKey, errOfDecoding := decodeCursorV2(*cursor)
+		exclusiveStartKey, errOfDecoding := decodeCursor(*cursor)
 		if errOfDecoding != nil {
 			err = errOfDecoding
 			return
@@ -100,7 +100,7 @@ func (table TableAction[R]) Query(partitionKey DynamodbKey, cursor *string, limi
 		return
 	}
 
-	nextCursor, err = encodeCursorV2(items.LastEvaluatedKey)
+	nextCursor, err = encodeCursor(items.LastEvaluatedKey)
 	if err != nil {
 		return
 	}
@@ -108,27 +108,6 @@ func (table TableAction[R]) Query(partitionKey DynamodbKey, cursor *string, limi
 }
 
 func decodeCursor(cursor string) (exclusiveStartKey map[string]*dynamodb.AttributeValue, err error) {
-	var decodedCursor []byte
-	decodedCursor, err = base64.StdEncoding.DecodeString(cursor)
-	if err != nil {
-		return
-	}
-	cursorAttributes := map[string]string{}
-	err = json.Unmarshal(decodedCursor, &cursorAttributes)
-	if err != nil {
-		return
-	}
-
-	exclusiveStartKey = map[string]*dynamodb.AttributeValue{}
-	for key, value := range cursorAttributes {
-		exclusiveStartKey[key] = &dynamodb.AttributeValue{
-			S: aws.String(value),
-		}
-	}
-	return
-}
-
-func decodeCursorV2(cursor string) (exclusiveStartKey map[string]*dynamodb.AttributeValue, err error) {
 	var decodedCursor []byte
 	decodedCursor, err = base64.StdEncoding.DecodeString(cursor)
 	if err != nil {
@@ -151,24 +130,6 @@ func encodeCursor(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor
 	if len(exclusiveStartKey) == 0 {
 		return
 	}
-	cursorAttributes := map[string]string{}
-	for key, value := range exclusiveStartKey {
-		cursorAttributes[key] = *value.S
-	}
-	var cursorBytes []byte
-	cursorBytes, err = json.Marshal(cursorAttributes)
-	if err != nil {
-		return
-	}
-	cursorCandidate := base64.StdEncoding.EncodeToString(cursorBytes)
-	cursor = &cursorCandidate
-	return
-}
-
-func encodeCursorV2(exclusiveStartKey map[string]*dynamodb.AttributeValue) (cursor *string, err error) {
-	if len(exclusiveStartKey) == 0 {
-		return
-	}
 	cursorAttributes := map[string]*AttributeValueWrapper{}
 	for key, value := range exclusiveStartKey {
 		cursorAttributes[key] = &AttributeValueWrapper{value}
@@ -187,13 +148,11 @@ type AttributeValueWrapper struct {
 	*dynamodb.AttributeValue
 }
 
-// **MarshalJSON for the wrapper**
 func (avw *AttributeValueWrapper) MarshalJSON() ([]byte, error) {
 	jsonAV := toJson(avw.AttributeValue)
 	return json.Marshal(jsonAV)
 }
 
-// **UnmarshalJSON for the wrapper**
 func (avw *AttributeValueWrapper) UnmarshalJSON(data []byte) error {
 	var jsonAV AttributeValueJSON
 	if err := json.Unmarshal(data, &jsonAV); err != nil {
@@ -216,7 +175,6 @@ type AttributeValueJSON struct {
 	SS   []*string                      `json:"SS,omitempty"`
 }
 
-// Convert from AttributeValue to AttributeValueJSON
 func toJson(av *dynamodb.AttributeValue) *AttributeValueJSON {
 	if av == nil {
 		return nil
@@ -258,7 +216,6 @@ func toJson(av *dynamodb.AttributeValue) *AttributeValueJSON {
 	return jsonAV
 }
 
-// Helper function to convert list of AttributeValues
 func listToJson(list []*dynamodb.AttributeValue) []*AttributeValueJSON {
 	if list == nil {
 		return nil
@@ -300,7 +257,6 @@ func fromJson(jsonAV *AttributeValueJSON) *dynamodb.AttributeValue {
 	}
 }
 
-// Helper function to convert list of AttributeValueJSON to AttributeValue
 func listFromJSON(list []*AttributeValueJSON) []*dynamodb.AttributeValue {
 	if list == nil {
 		return nil
@@ -312,7 +268,6 @@ func listFromJSON(list []*AttributeValueJSON) []*dynamodb.AttributeValue {
 	return result
 }
 
-// Helper function to convert map of AttributeValueJSON to AttributeValue
 func mapFromJSON(m map[string]*AttributeValueJSON) map[string]*dynamodb.AttributeValue {
 	if m == nil {
 		return nil
